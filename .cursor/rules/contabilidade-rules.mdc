@@ -1,0 +1,207 @@
+---
+description: 
+globs: 
+---
+# **Project Requirements Document (PRD)**
+
+## **Regras Gerais**
+- **NÂO UTILIZE MODULOS**
+- ### **Padrão de Componente**:
+ - **Os componentes devem ser gerados com base nas regras**:
+  - Sempre usar signals para gerenciamento de estado e desempenho de zone 
+  - Sempre utilizar inject no lugar de inserir Injeção de dependencia no construtor
+  - Utilize sempre standalone: true.
+  - Serviço de loading, ja existe um serviço para tratar de bloquear a tela durante o carregamento da aplicação utilize o mesmo com 
+    ```typescript
+        private loadingService = inject(LoadingService)
+        this.loadingService.show(); -- exibe o load
+        this.loadingService.hide(); -- oculta o load
+    ```
+---
+
+## **Visão Geral do Projeto**
+
+Este projeto consiste em um aplicativo móvel voltado para serviços de contabilidade, projetado para simplificar a interação entre contadores e seus clientes. O aplicativo permitirá o envio e armazenamento de documentos, emissão de notas fiscais, gráficos financeiros e integração com sistemas governamentais, oferecendo acesso rápido e eficiente a informações contábeis.
+
+
+## **Tecnologias Principais**
+
+- **Frontend**:
+  - Framework: **Angular 19**
+  - Estilização: **TailwindCSS** ou frameworks nativos
+- **PWA features**:
+  - Service Workers para cache estratégico
+  - Web Push Notifications
+  - Install Prompt
+- **Backend**:
+  - **Firebase**:
+    - Authentication
+    - Cloud Storage
+    - Cloud Functions
+- **Banco de dados**:
+ - SupaBase
+- **API governamentais**:
+ - Receita WS (CNPJ/CPF validation)
+ - Sefaz Integração NF-e
+ - Gov.BR OAuth
+- **DevOps**:
+ - Docker + Docker Compose (Ambiente local)
+ - CI/CD: GitHub Actions
+ - Monitoring: Sentry + Firebase Performance Monitoring
+ - Infra as Code: Terraform para GCP
+- **Outros**:
+  - **Docker** para desenvolvimento local
+  - **Google Cloud Platform** ou **AWS** para escalabilidade
+
+---
+
+## **Requisitos Tecnicos**
+ - Offline-first com sincronização automática
+ - Processamento de documentos inteligente
+ - Painéis fiscais em tempo real
+
+---
+
+## **Funcionalidades Principais**
+
+### 1. **Gerenciamento de Documentos**
+- Envio de documentos pelos clientes para abertura de empresa, IR e outros serviços contábeis.
+- Organização e categorização automática por tipo de documento e data.
+- Versionamento de documentos
+- Validação automática de documentos via Receita Federal
+- Acesso contínuo aos documentos enviados pelo contador.
+- OCR integrado para extração de dados (Tesseract.js)
+- Exportação de relatórios em PDF/XLSX
+
+### 2. **Emissão de Notas Fiscais (NF)**
+- Funcionalidade integrada para emitir notas fiscais diretamente pelo aplicativo.
+- Controle de notas emitidas por período.
+- Emissão de NF-e/NFC-e integrada a Sefaz
+
+### 3. **Gráficos Financeiros**
+- Visualização de impostos mensais e rendimentos:
+  - **Pessoa Física**: IRPF, rendimentos de plantões e consultas.
+  - **Pessoa Jurídica**: IRPJ, tributos e faturamento.
+- Gráficos interativos para análise detalhada de receitas e despesas.
+
+### 4. **Integração com Receita Federal**
+- Consulta e validação de informações fiscais diretamente com a Receita Federal.
+
+### 5. **Sistema de Usuários**
+- Registro e login com autenticação via **Firebase Authentication**.
+- Perfis distintos:
+  - **Contador**: Acesso total para gerenciar documentos e enviar informações.
+  - **Cliente**: Acesso restrito às suas próprias informações e gráficos.
+
+### 6. **Colaboração em Tempo Real**
+- chat integrado com histórico auditável
+- Comentários em documentos
+- @Mentions e notificações
+
+---
+
+## **Estrutura de Dados Sugerida**
+
+### **SupaBase**
+
+```sql
+-- Tabela de Usuários
+CREATE TABLE usuarios (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  firebase_uid TEXT UNIQUE NOT NULL,
+  tipo_usuario VARCHAR(20) CHECK (tipo_usuario IN ('contador', 'cliente')),
+  dados_empresa JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Tabela de Documentos
+CREATE TABLE documentos (
+  id SERIAL PRIMARY KEY,
+  usuario_id UUID REFERENCES usuarios(id),
+  tipo VARCHAR(50) NOT NULL,
+  versao INTEGER DEFAULT 1,
+  metadados JSONB,
+  status VARCHAR(20) CHECK (status IN ('pendente', 'aprovado', 'rejeitado')),
+  storage_path TEXT NOT NULL,
+  ocr_data JSONB
+);
+
+-- Índices
+CREATE INDEX idx_documentos_usuario ON documentos(usuario_id);
+CREATE INDEX idx_documentos_status ON documentos(status);
+```
+
+### **Politica de dados**
+```sql
+    -- Exemplo: Acesso a documentos
+    CREATE POLICY "Acesso do Usuário" ON documentos
+    FOR SELECT USING (
+    usuario_id = current_setting('app.current_user_id')::UUID
+    );
+```
+
+---
+
+## **Estrutura do Código**
+
+### Organização do Código
+
+```plaintext
+    src/
+    ├── app/
+    │   ├── core/
+    │   │   ├── auth/           # Guards, Interceptors
+    │   │   ├── api/            # Clients Supabase/Firebase
+    │   │   ├── services/       # Domain Services
+    │   │   └── utils/          # Validators, Helpers
+    │   ├── features/
+    │   │   ├── fiscal/         # NF Module (Lazy loaded)
+    │   │   ├── documents/      # Gestão Documental
+    │   │   ├── analytics/      # Dashboards
+    │   │   └── shared/         # UI Components
+    │   ├── assets/i18n/        # Localization
+    │   └── styles/             # Tailwind configs
+    ├── environments/
+    │   ├── environment.ts      # Dev
+    │   └── environment.prod.ts # Prod
+    └── angular.json            # PWA config
+```
+
+---
+
+## **Documentação**
+
+### 1. **Autenticação**
+- Utilizar **Firebase Authentication** para login e registro via e-mail/senha.
+
+### 2. **Firestore**
+- Armazenar documentos, gráficos e notas fiscais com estrutura organizada para consultas rápidas.
+
+### 3. **Cloud Storage**
+- Upload seguro de documentos enviados pelos clientes.
+
+### 4. **Cloud Functions**
+- Processamento de dados, envio de notificações e integração com a Receita Federal.
+
+---
+
+## **Diagrama de sequencia**
+
+ - Cliente->>+App: Upload Documento
+ - App->>+Firebase: Upload File
+ - Firebase-->>-App: Return URL
+ - App->>+Supabase: Store Metadata
+ - Supabase-->>-App: Success
+ - App->>+Cloud Function: Process OCR
+ - Cloud Function-->>-App: Extracted Data
+ - App->>+Sefaz API: Validate Data
+ - Sefaz API-->>-App: Validation Result
+ - App->>Cliente: Notification
+
+---
+
+## **Estilização**
+
+### TailwindCSS (ou equivalente nativo)
+- Estilização responsiva e moderna.
+- Sistema de temas para diferenciar visualmente as funcionalidades do cliente e contador.
