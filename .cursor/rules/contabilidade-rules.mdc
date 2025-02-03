@@ -17,6 +17,13 @@ globs:
         this.loadingService.show(); -- exibe o load
         this.loadingService.hide(); -- oculta o load
     ```
+  - Serviço de notificações, ja existe um serviço para tratar enviar notificações para o usuario 
+    ```typescript
+        private notificationService = inject(NotificationService)
+        this.notificationService.success('Curso inscrito com sucesso'); -- sucesso
+        this.notificationService.error('Erro ao cadastrar produto'); -- erro
+        this.notificationService.info('150 reais faturados'); -- informação
+    ```
 ---
 
 ## **Visão Geral do Projeto**
@@ -155,9 +162,6 @@ CREATE INDEX idx_documentos_status ON documentos(status);
     │   │   ├── services/       # Domain Services
     │   │   └── utils/          # Validators, Helpers
     │   ├── features/
-    │   │   ├── fiscal/         # NF Module (Lazy loaded)
-    │   │   ├── documents/      # Gestão Documental
-    │   │   ├── analytics/      # Dashboards
     │   │   └── shared/         # UI Components
     │   ├── assets/i18n/        # Localization
     │   └── styles/             # Tailwind configs
